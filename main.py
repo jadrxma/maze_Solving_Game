@@ -1126,14 +1126,14 @@ def update_streamlit(surface, placeholder):
         st.session_state.frames.append(image.copy())
     
     # Display the current frame
-    placeholder.image(image, use_column_width=True)
+    placeholder.image(image, use_container_width=True)
 
 def pygame_surface_to_streamlit(surface, placeholder):
     # Convert Pygame surface to bytes
     image = pygame_surface_to_image(surface)
     
     # Update Streamlit placeholder
-    placeholder.image(image, use_column_width=True)
+    placeholder.image(image, use_container_width=True)
 
 def pygame_surface_to_image(surface):
     """Convert pygame surface to PIL Image"""
