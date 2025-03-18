@@ -367,7 +367,7 @@ def recursive_backtracking(grid, width, height, surface, placeholder):
                 cell.draw(surface)
         
         # Update Streamlit with current state
-        update_streamlit(surface, placeholder)
+        update_display(surface, placeholder)
         
         # Remove path highlighting from current cell
         current.path = False
@@ -445,7 +445,7 @@ def kruskals_algorithm(grid, width, height, surface, placeholder):
                 cell.draw(surface)
         
         # Update Streamlit with current state
-        update_streamlit(surface, placeholder)
+        update_display(surface, placeholder)
         
         # Remove path highlighting
         grid[y1][x1].path = False
@@ -515,7 +515,7 @@ def prims_algorithm(grid, width, height, surface, placeholder):
                 cell.draw(surface)
         
         # Update Streamlit with current state
-        update_streamlit(surface, placeholder)
+        update_display(surface, placeholder)
         
         # Remove path highlighting
         grid[y1][x1].path = False
@@ -831,7 +831,7 @@ def step_a_star(surface, placeholder):
                 cell.draw(surface)
         
         # Update display
-        update_streamlit(surface, placeholder)
+        update_display(surface, placeholder)
         
         return True
     
@@ -883,7 +883,7 @@ def step_a_star(surface, placeholder):
             cell.draw(surface)
     
     # Update display
-    update_streamlit(surface, placeholder)
+    update_display(surface, placeholder)
     
     return False
 
@@ -935,7 +935,7 @@ def step_bfs(surface, placeholder):
                 cell.draw(surface)
         
         # Update display
-        update_streamlit(surface, placeholder)
+        update_display(surface, placeholder)
         
         return True
     
@@ -974,7 +974,7 @@ def step_bfs(surface, placeholder):
             cell.draw(surface)
     
     # Update display
-    update_streamlit(surface, placeholder)
+    update_display(surface, placeholder)
     
     return False
 
@@ -1033,7 +1033,7 @@ def step_dfs(surface, placeholder):
                 cell.draw(surface)
         
         # Update display
-        update_streamlit(surface, placeholder)
+        update_display(surface, placeholder)
         
         return True
     
@@ -1067,7 +1067,7 @@ def step_dfs(surface, placeholder):
             cell.draw(surface)
     
     # Update display
-    update_streamlit(surface, placeholder)
+    update_display(surface, placeholder)
     
     return False
 
@@ -1339,6 +1339,32 @@ def manual_solve_maze(grid, width, height, surface, placeholder):
                 cell.draw(surface)
         update_streamlit(surface, placeholder)
 
+# Convert surface to PIL Image for display
+def pygame_surface_to_image(surface):
+    """Convert pygame surface to PIL Image"""
+    pygame_image = pygame.surfarray.array3d(surface)
+    pygame_image = np.transpose(pygame_image, [1, 0, 2])  # Transpose to get correct orientation
+    image = Image.fromarray(pygame_image.astype('uint8'))
+    return image
+
+# Helper function to update Streamlit with current pygame surface
+def update_display(surface, placeholder):
+    """Display the pygame surface in Streamlit"""
+    # Convert surface to image
+    image = pygame_surface_to_image(surface)
+    
+    # If recording is active, save the frame
+    if 'recording' in st.session_state and st.session_state.recording:
+        st.session_state.frames.append(image.copy())
+    
+    # Display the current frame
+    placeholder.image(image, use_container_width=True)
+
+# Alias for backward compatibility with existing functions
+def update_streamlit(surface, placeholder):
+    """Alias for update_display for backward compatibility"""
+    update_display(surface, placeholder)
+
 # Store the solving state in session_state
 if 'solving_state' not in st.session_state:
     st.session_state.solving_state = {
@@ -1360,14 +1386,6 @@ if 'solving_state' not in st.session_state:
         'solution_found': False,
         'auto_advance': False
     }
-
-# Convert surface to PIL Image for display
-def pygame_surface_to_image(surface):
-    """Convert pygame surface to PIL Image"""
-    pygame_image = pygame.surfarray.array3d(surface)
-    pygame_image = np.transpose(pygame_image, [1, 0, 2])  # Transpose to get correct orientation
-    image = Image.fromarray(pygame_image.astype('uint8'))
-    return image
 
 def create_video_from_frames(frames, fps=10):
     """Create a video file from a list of frames"""
