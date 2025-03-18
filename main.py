@@ -570,12 +570,24 @@ def depth_first_search(grid, width, height, surface, placeholder):
     start = grid[0][0]
     end = grid[height - 1][width - 1]
     
+    # Progress display for Streamlit
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
     stack = [(start, [])]
     visited = set()
     
     steps = 0
+    max_steps = width * height * 2  # Approximate max steps
+    
     while stack:
         steps += 1
+        
+        # Update progress bar
+        progress = min(steps / max_steps, 0.99)
+        progress_bar.progress(progress)
+        status_text.text(f"DFS Search: Exploring cell {steps}")
+        
         current, path = stack.pop()
         
         # Skip if already visited
@@ -615,6 +627,11 @@ def depth_first_search(grid, width, height, surface, placeholder):
                     cell.draw(surface)
             
             update_streamlit(surface, placeholder)
+            
+            # Complete the progress bar
+            progress_bar.progress(1.0)
+            status_text.text(f"Solution found in {steps} steps!")
+            
             print(f"DFS found solution in {steps} steps")
             return True
         
@@ -644,11 +661,13 @@ def depth_first_search(grid, width, height, surface, placeholder):
                 for cell in row:
                     cell.draw(surface)
             update_streamlit(surface, placeholder)
-            
-            time.sleep(0.02)  # Brief pause to show each neighbor
         
-        time.sleep(0.05)  # Slow down to make visualization more visible
+        # Use a delay that works well in both local and hosted environments
+        time.sleep(0.1)
     
+    # Failed to find solution
+    progress_bar.progress(1.0)
+    status_text.text(f"No solution found after {steps} steps.")
     print(f"DFS failed to find solution after {steps} steps")
     return False
 
@@ -657,12 +676,24 @@ def breadth_first_search(grid, width, height, surface, placeholder):
     start = grid[0][0]
     end = grid[height - 1][width - 1]
     
+    # Progress display for Streamlit
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
     queue = [(start, [])]
     visited = set([(start.x, start.y)])
     
     steps = 0
+    max_steps = width * height * 2  # Approximate max steps
+    
     while queue:
         steps += 1
+        
+        # Update progress bar
+        progress = min(steps / max_steps, 0.99)
+        progress_bar.progress(progress)
+        status_text.text(f"BFS Search: Exploring cell {steps}")
+        
         current, path = queue.pop(0)
         
         # Highlight current cell being explored
@@ -695,6 +726,11 @@ def breadth_first_search(grid, width, height, surface, placeholder):
                     cell.draw(surface)
             
             update_streamlit(surface, placeholder)
+            
+            # Complete the progress bar
+            progress_bar.progress(1.0)
+            status_text.text(f"Solution found in {steps} steps!")
+            
             print(f"BFS found solution in {steps} steps")
             return True
         
@@ -725,15 +761,17 @@ def breadth_first_search(grid, width, height, surface, placeholder):
                     for cell in row:
                         cell.draw(surface)
                 update_streamlit(surface, placeholder)
-                
-                time.sleep(0.02)  # Brief pause to show each neighbor
         
         # Add neighbors to queue
         for neighbor in neighbors:
             queue.append((neighbor, path + [current]))
         
-        time.sleep(0.05)  # Slow down to make visualization more visible
+        # Use a delay that works well in both local and hosted environments
+        time.sleep(0.1)
     
+    # Failed to find solution
+    progress_bar.progress(1.0)
+    status_text.text(f"No solution found after {steps} steps.")
     print(f"BFS failed to find solution after {steps} steps")
     return False
 
@@ -741,6 +779,10 @@ def a_star_algorithm(grid, width, height, surface, placeholder):
     """A* pathfinding algorithm for maze solving"""
     start = grid[0][0]
     end = grid[height - 1][width - 1]
+    
+    # Progress display for Streamlit
+    progress_bar = st.progress(0)
+    status_text = st.empty()
     
     # A* uses priority queue
     open_set = [(0, start, [])]  # (f_score, cell, path)
@@ -752,8 +794,16 @@ def a_star_algorithm(grid, width, height, surface, placeholder):
     f_score = {(start.x, start.y): heuristic(start, end)}
     
     steps = 0
+    max_steps = width * height * 2  # Approximate max steps
+    
     while open_set:
         steps += 1
+        
+        # Update progress bar
+        progress = min(steps / max_steps, 0.99)
+        progress_bar.progress(progress)
+        status_text.text(f"A* Search: Exploring cell {steps}")
+        
         # Get node with lowest f_score
         open_set.sort(key=lambda x: x[0])
         _, current, path = open_set.pop(0)
@@ -795,6 +845,11 @@ def a_star_algorithm(grid, width, height, surface, placeholder):
                     cell.draw(surface)
             
             update_streamlit(surface, placeholder)
+            
+            # Complete the progress bar
+            progress_bar.progress(1.0)
+            status_text.text(f"Solution found in {steps} steps!")
+            
             print(f"A* found solution in {steps} steps")
             return True
         
@@ -843,8 +898,12 @@ def a_star_algorithm(grid, width, height, surface, placeholder):
                 cell.draw(surface)
         update_streamlit(surface, placeholder)
         
-        time.sleep(0.05)  # Slow down to make visualization more visible
+        # Use a delay that works well in both local and hosted environments
+        time.sleep(0.1)
     
+    # Failed to find solution
+    progress_bar.progress(1.0)
+    status_text.text(f"No solution found after {steps} steps.")
     print(f"A* failed to find solution after {steps} steps")
     return False
 
@@ -1127,6 +1186,10 @@ def update_streamlit(surface, placeholder):
     
     # Display the current frame
     placeholder.image(image, use_container_width=True)
+    
+    # Force Streamlit to update the display
+    # This helps ensure updates are displayed immediately in hosted environments
+    time.sleep(0.1)  # Small delay to allow the UI to update
 
 def pygame_surface_to_streamlit(surface, placeholder):
     # Convert Pygame surface to bytes
