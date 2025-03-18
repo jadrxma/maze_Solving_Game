@@ -775,136 +775,300 @@ def breadth_first_search(grid, width, height, surface, placeholder):
     print(f"BFS failed to find solution after {steps} steps")
     return False
 
-def a_star_algorithm(grid, width, height, surface, placeholder):
-    """A* pathfinding algorithm for maze solving"""
-    start = grid[0][0]
+# Perform one step of A* algorithm
+def step_a_star(surface, placeholder):
+    """Perform one step of A* algorithm"""
+    state = st.session_state.solving_state
+    grid = state['grid']
+    width = state['width']
+    height = state['height']
     end = grid[height - 1][width - 1]
     
-    # Progress display for Streamlit
-    progress_bar = st.progress(0)
-    status_text = st.empty()
+    # No more steps if algorithm is complete
+    if state['complete']:
+        return state['solution_found']
     
-    # A* uses priority queue
-    open_set = [(0, start, [])]  # (f_score, cell, path)
-    closed_set = set()
+    # No more steps if open_set is empty
+    if not state['open_set']:
+        state['complete'] = True
+        return False
     
-    # G score: cost from start to current node
-    g_score = {(start.x, start.y): 0}
-    # F score: g_score + heuristic
-    f_score = {(start.x, start.y): heuristic(start, end)}
+    # Get node with lowest f_score
+    state['open_set'].sort(key=lambda x: x[0])
+    _, current, path = state['open_set'].pop(0)
+    state['current'] = current
+    state['path'] = path
     
-    steps = 0
-    max_steps = width * height * 2  # Approximate max steps
+    # Skip if already processed
+    if (current.x, current.y) in state['closed_set']:
+        return False
     
-    while open_set:
-        steps += 1
+    # Highlight current cell being explored
+    current.path = True
+    
+    # Reset all previously explored cells to normal visited state
+    for cell_pos in state['closed_set']:
+        x, y = cell_pos
+        if grid[y][x] != current and not grid[y][x].solution:
+            grid[y][x].path = False
+    
+    # Add to closed set
+    state['closed_set'].add((current.x, current.y))
+    
+    # Check if we reached the end
+    if current == end:
+        # Visualize solution path
+        for cell in path + [current]:
+            cell.solution = True
+            cell.path = False
         
-        # Update progress bar
-        progress = min(steps / max_steps, 0.99)
-        progress_bar.progress(progress)
-        status_text.text(f"A* Search: Exploring cell {steps}")
+        state['complete'] = True
+        state['solution_found'] = True
         
-        # Get node with lowest f_score
-        open_set.sort(key=lambda x: x[0])
-        _, current, path = open_set.pop(0)
+        # Draw final state
+        for row in grid:
+            for cell in row:
+                cell.draw(surface)
         
-        # Skip if already processed
-        if (current.x, current.y) in closed_set:
+        # Update display
+        update_streamlit(surface, placeholder)
+        
+        return True
+    
+    # Get possible moves
+    neighbors = []
+    x, y = current.x, current.y
+    
+    # Check each direction
+    if not current.walls["left"]:
+        neighbors.append(grid[y][x - 1])
+    if not current.walls["right"]:
+        neighbors.append(grid[y][x + 1])
+    if not current.walls["top"]:
+        neighbors.append(grid[y - 1][x])
+    if not current.walls["bottom"]:
+        neighbors.append(grid[y + 1][x])
+    
+    # Process neighbors
+    for neighbor in neighbors:
+        nx, ny = neighbor.x, neighbor.y
+        
+        # Skip if in closed set
+        if (nx, ny) in state['closed_set']:
             continue
         
-        # Highlight current cell being explored
-        current.path = True
+        # Calculate tentative g_score
+        tentative_g = state['g_score'].get((current.x, current.y), float('inf')) + 1
         
-        # Reset all previously explored cells to normal visited state
-        for cell_pos in closed_set:
-            x, y = cell_pos
-            if grid[y][x] != current and not grid[y][x].solution:
-                grid[y][x].path = False
+        # Skip if not better path
+        if (nx, ny) in state['g_score'] and tentative_g >= state['g_score'][(nx, ny)]:
+            continue
         
-        # Draw current state
-        for row in grid:
-            for cell in row:
-                cell.draw(surface)
+        # This path is better
+        state['g_score'][(nx, ny)] = tentative_g
+        state['f_score'][(nx, ny)] = tentative_g + heuristic(neighbor, end)
         
-        # Update Streamlit with current state
-        update_streamlit(surface, placeholder)
+        # Briefly highlight the neighbor being considered
+        neighbor.path = True
         
-        # Add to closed set
-        closed_set.add((current.x, current.y))
-        
-        # Check if we reached the end
-        if current == end:
-            # Visualize solution path
-            for cell in path + [current]:
-                cell.solution = True
-                cell.path = False
-            
-            # Draw final solution
-            for row in grid:
-                for cell in row:
-                    cell.draw(surface)
-            
-            update_streamlit(surface, placeholder)
-            
-            # Complete the progress bar
-            progress_bar.progress(1.0)
-            status_text.text(f"Solution found in {steps} steps!")
-            
-            print(f"A* found solution in {steps} steps")
-            return True
-        
-        # Get possible moves
-        neighbors = []
-        x, y = current.x, current.y
-        
-        # Check each direction
-        if not current.walls["left"]:
-            neighbors.append(grid[y][x - 1])
-        if not current.walls["right"]:
-            neighbors.append(grid[y][x + 1])
-        if not current.walls["top"]:
-            neighbors.append(grid[y - 1][x])
-        if not current.walls["bottom"]:
-            neighbors.append(grid[y + 1][x])
-        
-        # Process neighbors
-        for neighbor in neighbors:
-            nx, ny = neighbor.x, neighbor.y
-            
-            # Skip if in closed set
-            if (nx, ny) in closed_set:
-                continue
-            
-            # Calculate tentative g_score
-            tentative_g = g_score.get((current.x, current.y), float('inf')) + 1
-            
-            # Skip if not better path
-            if (nx, ny) in g_score and tentative_g >= g_score[(nx, ny)]:
-                continue
-            
-            # This path is better
-            g_score[(nx, ny)] = tentative_g
-            f_score[(nx, ny)] = tentative_g + heuristic(neighbor, end)
-            
-            # Briefly highlight the neighbor being considered
-            neighbor.path = True
-            
-            # Add to open set
-            open_set.append((f_score[(nx, ny)], neighbor, path + [current]))
-        
-        # Draw after processing neighbors to show consideration
-        for row in grid:
-            for cell in row:
-                cell.draw(surface)
-        update_streamlit(surface, placeholder)
-        
-        # Use a delay that works well in both local and hosted environments
-        time.sleep(0.1)
+        # Add to open set
+        state['open_set'].append((state['f_score'][(nx, ny)], neighbor, path + [current]))
     
-    # Failed to find solution
-    progress_bar.progress(1.0)
-    status_text.text(f"No solution found after {steps} steps.")
-    print(f"A* failed to find solution after {steps} steps")
+    # Increment step counter
+    state['step'] += 1
+    
+    # Draw current state
+    for row in grid:
+        for cell in row:
+            cell.draw(surface)
+    
+    # Update display
+    update_streamlit(surface, placeholder)
+    
+    return False
+
+# Perform one step of BFS algorithm
+def step_bfs(surface, placeholder):
+    """Perform one step of BFS algorithm"""
+    state = st.session_state.solving_state
+    grid = state['grid']
+    width = state['width']
+    height = state['height']
+    end = grid[height - 1][width - 1]
+    
+    # No more steps if algorithm is complete
+    if state['complete']:
+        return state['solution_found']
+    
+    # No more steps if queue is empty
+    if not state['queue']:
+        state['complete'] = True
+        return False
+    
+    # Get next cell from queue
+    current, path = state['queue'].pop(0)
+    state['current'] = current
+    state['path'] = path
+    
+    # Highlight current cell being explored
+    current.path = True
+    
+    # Reset all previously explored cells to normal visited state
+    for row in grid:
+        for cell in row:
+            if cell != current and (cell.x, cell.y) in state['visited'] and not cell.solution:
+                cell.path = False
+    
+    # Check if we reached the end
+    if current == end:
+        # Visualize solution path
+        for cell in path + [current]:
+            cell.solution = True
+            cell.path = False
+        
+        state['complete'] = True
+        state['solution_found'] = True
+        
+        # Draw final state
+        for row in grid:
+            for cell in row:
+                cell.draw(surface)
+        
+        # Update display
+        update_streamlit(surface, placeholder)
+        
+        return True
+    
+    # Get possible moves
+    neighbors = []
+    x, y = current.x, current.y
+    
+    # Check each direction
+    directions = [
+        ("left", -1, 0), 
+        ("right", 1, 0), 
+        ("top", 0, -1), 
+        ("bottom", 0, 1)
+    ]
+    
+    for direction, dx, dy in directions:
+        nx, ny = x + dx, y + dy
+        if not current.walls[direction] and (nx, ny) not in state['visited']:
+            neighbor = grid[ny][nx]
+            neighbors.append(neighbor)
+            state['visited'].add((nx, ny))
+            
+            # Briefly highlight each neighbor as it's discovered
+            neighbor.path = True
+    
+    # Add neighbors to queue
+    for neighbor in neighbors:
+        state['queue'].append((neighbor, path + [current]))
+    
+    # Increment step counter
+    state['step'] += 1
+    
+    # Draw current state
+    for row in grid:
+        for cell in row:
+            cell.draw(surface)
+    
+    # Update display
+    update_streamlit(surface, placeholder)
+    
+    return False
+
+# Perform one step of DFS algorithm
+def step_dfs(surface, placeholder):
+    """Perform one step of DFS algorithm"""
+    state = st.session_state.solving_state
+    grid = state['grid']
+    width = state['width']
+    height = state['height']
+    end = grid[height - 1][width - 1]
+    
+    # No more steps if algorithm is complete
+    if state['complete']:
+        return state['solution_found']
+    
+    # No more steps if stack is empty
+    if not state['stack']:
+        state['complete'] = True
+        return False
+    
+    # Get next cell from stack
+    current, path = state['stack'].pop()
+    state['current'] = current
+    state['path'] = path
+    
+    # Skip if already visited
+    if (current.x, current.y) in state['visited']:
+        return False
+    
+    # Mark as visited
+    state['visited'].add((current.x, current.y))
+    
+    # Highlight current cell being explored
+    current.path = True
+    
+    # Reset all previously explored cells to normal visited state
+    for row in grid:
+        for cell in row:
+            if cell != current and (cell.x, cell.y) in state['visited'] and not cell.solution:
+                cell.path = False
+    
+    # Check if we reached the end
+    if current == end:
+        # Visualize solution path
+        for cell in path + [current]:
+            cell.solution = True
+            cell.path = False
+        
+        state['complete'] = True
+        state['solution_found'] = True
+        
+        # Draw final state
+        for row in grid:
+            for cell in row:
+                cell.draw(surface)
+        
+        # Update display
+        update_streamlit(surface, placeholder)
+        
+        return True
+    
+    # Get possible moves
+    neighbors = []
+    x, y = current.x, current.y
+    
+    # Check each direction - in reverse order for DFS visualization
+    if not current.walls["bottom"] and (x, y + 1) not in state['visited']:
+        neighbors.append(grid[y + 1][x])
+    if not current.walls["top"] and (x, y - 1) not in state['visited']:
+        neighbors.append(grid[y - 1][x])
+    if not current.walls["right"] and (x + 1, y) not in state['visited']:
+        neighbors.append(grid[y][x + 1])
+    if not current.walls["left"] and (x - 1, y) not in state['visited']:
+        neighbors.append(grid[y][x - 1])
+    
+    # Add neighbors to stack
+    for neighbor in neighbors:
+        state['stack'].append((neighbor, path + [current]))
+        
+        # Briefly highlight the neighbor being considered
+        neighbor.path = True
+    
+    # Increment step counter
+    state['step'] += 1
+    
+    # Draw current state
+    for row in grid:
+        for cell in row:
+            cell.draw(surface)
+    
+    # Update display
+    update_streamlit(surface, placeholder)
+    
     return False
 
 # Heuristic function for A* (Manhattan distance)
@@ -1175,29 +1339,29 @@ def manual_solve_maze(grid, width, height, surface, placeholder):
                 cell.draw(surface)
         update_streamlit(surface, placeholder)
 
-# Helper function to update Streamlit with current pygame surface
-def update_streamlit(surface, placeholder):
-    # Convert surface to image
-    image = pygame_surface_to_image(surface)
-    
-    # If recording is active, save the frame
-    if 'recording' in st.session_state and st.session_state.recording:
-        st.session_state.frames.append(image.copy())
-    
-    # Display the current frame
-    placeholder.image(image, use_container_width=True)
-    
-    # Force Streamlit to update the display
-    # This helps ensure updates are displayed immediately in hosted environments
-    time.sleep(0.1)  # Small delay to allow the UI to update
+# Store the solving state in session_state
+if 'solving_state' not in st.session_state:
+    st.session_state.solving_state = {
+        'step': 0,
+        'algorithm': None,
+        'complete': False,
+        'grid': None,
+        'width': 0,
+        'height': 0,
+        'open_set': [],
+        'closed_set': set(),
+        'g_score': {},
+        'f_score': {},
+        'queue': [],
+        'stack': [],
+        'visited': set(),
+        'current': None,
+        'path': [],
+        'solution_found': False,
+        'auto_advance': False
+    }
 
-def pygame_surface_to_streamlit(surface, placeholder):
-    # Convert Pygame surface to bytes
-    image = pygame_surface_to_image(surface)
-    
-    # Update Streamlit placeholder
-    placeholder.image(image, use_container_width=True)
-
+# Convert surface to PIL Image for display
 def pygame_surface_to_image(surface):
     """Convert pygame surface to PIL Image"""
     pygame_image = pygame.surfarray.array3d(surface)
